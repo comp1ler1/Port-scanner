@@ -26,6 +26,7 @@ private:
     static bool port_is_open(const std::string& ip, int port);
 
 
+    void scanPortRange(const std::string& ip, int startPort, int endPort);
     void task(const std::string& ip, int port);
 
 

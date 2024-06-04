@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
     }
 
 
-    portscanner scanner(1000, portInit, portEnd);
+    portscanner scanner(100, portInit, portEnd);
     scanner.scanPorts(ip);
 
     return 0;
