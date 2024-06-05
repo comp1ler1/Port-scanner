@@ -5,7 +5,7 @@ This program uses the creation of 1000 streams for simultaneous scanning. Stack 
 
 To install, run the following commands:
 
-1. git clone [git@github.com:comp1ler1/Port-scanner.git](https://github.com/comp1ler1/Port-scanner.git)
+1. git clone https://github.com/comp1ler1/Port-scanner.git
 
 2. cd Port-scanner
 
