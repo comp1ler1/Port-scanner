@@ -13,7 +13,21 @@
 #include <unordered_set>
 #include <chrono>
 #include <map>
+#include <sys/resource.h>
 
+// Устанавливаем лимиты на количество открытых файловых дескрипторов
+bool set_fd_limit(int max_fds) {
+    struct rlimit rl;
+    rl.rlim_cur = max_fds;
+    rl.rlim_max = max_fds;
+    if (setrlimit(RLIMIT_NOFILE, &rl) != 0) {
+        std::cerr << "Failed to set file descriptor limit\n";
+        return false;
+    }
+    return true;
+}
+
+// Устанавливаем сокет в неблокирующий режим
 bool set_non_blocking(int sockfd) {
     int flags = fcntl(sockfd, F_GETFL, 0);
     if (flags == -1) {
@@ -68,7 +82,7 @@ bool portscanner::port_is_open(const std::string& ip, int port) {
     }
 
     struct epoll_event events[1];
-    int nfds = epoll_wait(epollfd, events, 1, 1000); 
+    int nfds = epoll_wait(epollfd, events, 1, 1000); // Тайм-аут 1 секунда
 
     if (nfds == -1) {
         std::cerr << "Epoll wait failed\n";
@@ -92,9 +106,14 @@ bool portscanner::port_is_open(const std::string& ip, int port) {
 }
 
 void portscanner::scanPorts(const std::string& ip) {
+    // Попытка установить лимиты на количество открытых файловых дескрипторов
+    if (!set_fd_limit(65535)) {
+        std::cerr << "Could not set file descriptor limit to 65535. Continuing with default limit.\n";
+    }
+
     constexpr int MAX_EVENTS = 65535;
-    constexpr int TIMEOUT_MS = 1000; 
-    constexpr int BATCH_SIZE = 65535; 
+    constexpr int TIMEOUT_MS = 500; // Тайм-аут в миллисекундах
+    constexpr int BATCH_SIZE = 65535; // Количество портов для обработки в одном батче
 
     int epollfd = epoll_create1(0);
     if (epollfd == -1) {
@@ -103,9 +122,9 @@ void portscanner::scanPorts(const std::string& ip) {
     }
 
     epoll_event event;
-    event.events = EPOLLOUT | EPOLLET; 
+    event.events = EPOLLOUT | EPOLLET; // Ждем готовности к записи (т.е. соединение установлено)
     std::unordered_set<int> open_ports;
-    std::map<int, int> socket_to_port; 
+    std::map<int, int> socket_to_port; // Отслеживаем порт для каждого сокета
     std::mutex mtx;
 
     auto start_time = std::chrono::steady_clock::now();
@@ -136,7 +155,7 @@ void portscanner::scanPorts(const std::string& ip) {
                     close(sockfd);
                     continue;
                 }
-                socket_to_port[sockfd] = port;
+                socket_to_port[sockfd] = port; // Запоминаем порт для этого сокета
                 sockets.push_back(sockfd);
             } else {
                 close(sockfd);
@@ -166,8 +185,9 @@ void portscanner::scanPorts(const std::string& ip) {
             }
         }
 
-       
+        // Закрываем все оставшиеся сокеты в батче
         for (int sockfd : sockets) {
+            epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, NULL);
             close(sockfd);
         }
     }
