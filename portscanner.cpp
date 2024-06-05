@@ -107,12 +107,12 @@ bool portscanner::port_is_open(const std::string& ip, int port) {
 
 void portscanner::scanPorts(const std::string& ip) {
     // Попытка установить лимиты на количество открытых файловых дескрипторов
-    if (!set_fd_limit(65535)) {
-        std::cerr << "Could not set file descriptor limit to 65535. Continuing with default limit.\n";
+    if (!set_fd_limit(66000)) {
+        std::cerr << "Could not set file descriptor limit to 66000. Continuing with default limit.\n";
     }
 
     constexpr int MAX_EVENTS = 65535;
-    constexpr int TIMEOUT_MS = 500; // Тайм-аут в миллисекундах
+    constexpr int TIMEOUT_MS = 2000; // Тайм-аут в миллисекундах
     constexpr int BATCH_SIZE = 65535; // Количество портов для обработки в одном батче
 
     int epollfd = epoll_create1(0);
